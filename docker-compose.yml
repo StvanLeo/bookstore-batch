@@ -12,6 +12,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  ftp-server:
+    image: garethflowers/ftp-server
+    container_name: bookstore-ftp-server
+    environment:
+      - FTP_USER=bookstore
+      - FTP_PASS=bookstore123
+      - PUBLIC_IP=127.0.0.1
+      - PASV_MIN_PORT=40000
+      - PASV_MAX_PORT=40009
+    ports:
+      - "20-21:20-21/tcp"
+      - "40000-40009:40000-40009/tcp"
+    volumes:
+      - ./ftp_data:/home/bookstore
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "netstat -lnt | grep ':21' >/dev/null" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   bookstore-batch:
     image: bookstore-batch
@@ -24,6 +45,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      ftp-server:
+        condition: service_healthy
+
     environment:
       # Inject these into your application.properties / application.yml
       # Postgres
