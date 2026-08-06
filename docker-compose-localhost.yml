@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine # Good practice: always use a specific, lightweight version
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: bookstore_pwd
+      POSTGRES_DB: bookstore
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookstore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

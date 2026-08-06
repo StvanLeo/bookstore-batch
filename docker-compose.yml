@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine # Good practice: always use a specific, lightweight version
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: bookstore_pwd
+      POSTGRES_DB: bookstore
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookstore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bookstore-batch:
+    image: bookstore-batch
+    container_name: bookstore-batch
+    build:
+      context: .
+      dockerfile: Dockerfile  # uses the file to generate the compiled app of bookstore-batch
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Inject these into your application.properties / application.yml
+      # Postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/bookstore
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=bookstore_pwd
+    develop:
+      watch:
+        # Watch your compiled classes folder for changes
+        # --- FOR GRADLE ---
+        - action: rebuild
+          path: src
+        - action: rebuild
+          path: build.gradle
