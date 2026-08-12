@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine # Good practice: always use a specific, lightweight version
+    container_name: bookstore-batch-postgress
     restart: always
     environment:
       POSTGRES_PASSWORD: bookstore_pwd
@@ -12,9 +13,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
   ftp-server:
     image: garethflowers/ftp-server
-    container_name: bookstore-ftp-server
+    container_name: bookstore-batch-ftp
     environment:
       - FTP_USER=bookstore
       - FTP_PASS=bookstore123
@@ -62,3 +66,6 @@ services:
           path: src
         - action: rebuild
           path: build.gradle
+
+volumes:
+  postgres-data:
