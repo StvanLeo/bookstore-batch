@@ -26,10 +26,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-batch-jdbc'
     // Spring Integration
-    implementation 'org.springframework.integration:spring-integration-core'
+    // implementation 'org.springframework.integration:spring-integration-core'
     implementation 'org.springframework.integration:spring-integration-ftp'
     // FTP client
-    implementation 'commons-net:commons-net'
+    // implementation 'commons-net:commons-net'
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

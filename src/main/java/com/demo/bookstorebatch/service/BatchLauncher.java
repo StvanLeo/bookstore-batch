@@ -1,36 +1,46 @@
 package com.demo.bookstorebatch.service;
 
+import com.demo.bookstorebatch.batch.ImportDefinition;
+import com.demo.bookstorebatch.batch.ImportRegistry;
 import lombok.RequiredArgsConstructor;
-import org.springframework.batch.core.job.Job;
-import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.launch.JobOperator;
-import org.springframework.batch.core.launch.JobRestartException;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Path;
+import java.io.File;
 
 @Service
 @RequiredArgsConstructor
 public class BatchLauncher {
     private final JobOperator jobOperator;
-    private final Job publisherJob;
+    private final ImportRegistry importRegistry;
 
-    private void launch(Path file) throws JobInstanceAlreadyCompleteException, InvalidJobParametersException, JobExecutionAlreadyRunningException, JobRestartException {
-        Job job = switch(file.getFileName().toString()) {
-            case "pub.csv" -> publisherJob;
-            default -> throw new IllegalArgumentException();
-        };
+    public void launch(File file) {
+        ImportDefinition definition =
+                importRegistry.find(file);
 
-        JobParameters params =
-                new JobParametersBuilder()
-                        .addString("file", file.toString())
-                        .addLong("timestamp", System.currentTimeMillis())
-                        .toJobParameters();
+        JobParameters parameters = new JobParametersBuilder()
+                .addString(
+                        "file",
+                        file.getAbsolutePath(),
+                        true
+                )
+                .addString(
+                        "filename",
+                        file.getName(),
+                        true
+                )
+                .toJobParameters();
 
-        jobOperator.start(job, params);
+        try {
+            jobOperator.start(
+                    definition.job(),
+                    parameters
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Could not launch batch for " + file + e);
+        }
     }
 }

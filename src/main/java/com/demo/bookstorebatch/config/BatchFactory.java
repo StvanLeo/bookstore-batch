@@ -15,41 +15,5 @@ import org.springframework.core.io.Resource;
 import org.springframework.transaction.PlatformTransactionManager;
 
 public class BatchFactory {
-    public static <T> FlatFileItemReader<T> reader(
-            Class<T> targetClass,
-            Resource resource,
-            String... columns) {
-        BeanWrapperFieldSetMapper<T> mapper = new BeanWrapperFieldSetMapper<>();
-        mapper.setTargetType(targetClass);
-
-        return new FlatFileItemReaderBuilder<T>()
-                .name(targetClass.getSimpleName() + "Reader")
-                .resource(resource)
-                .delimited()
-                .names(columns)
-                .fieldSetMapper(mapper)
-                .linesToSkip(1)
-                .build();
-    }
-
-    public static <T> JpaItemWriter<T> writer(EntityManagerFactory entityManagerFactory) {
-        return new JpaItemWriter<>(entityManagerFactory);
-    }
-
-    public static <T> Step createStep(
-            JobRepository jobRepository,
-            PlatformTransactionManager txManager,
-            ItemReader<T> reader,
-            ItemProcessor<T, T> processor,
-            ItemWriter<T> writer,
-            String name) {
-
-        return new StepBuilder(name, jobRepository)
-                .<T,T>chunk(100)
-                .reader(reader)
-                .processor(processor)
-                .writer(writer)
-                .transactionManager(txManager)
-                .build();
-    }
+ 
 }
