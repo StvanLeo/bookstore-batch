@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine # Good practice: always use a specific, lightweight version
-    container_name: bookstore-batch-postgress
+    container_name: bookstore-batch-postgres
     restart: always
     environment:
       POSTGRES_PASSWORD: bookstore_pwd
@@ -16,6 +16,8 @@ services:
       retries: 5
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - bookstore-network
 
   ftp-server:
     image: garethflowers/ftp-server
@@ -31,7 +33,9 @@ services:
       - "20-21:20-21/tcp"
       - "40000-40009:40000-40009/tcp"
     volumes:
-      - ./ftp_data:/home/bookstore
+      # The FTP account's root is /home/bookstore, so FTP path /incoming
+      # must be mounted at /home/bookstore/incoming.
+      - ./ftp_data/incoming:/home/bookstore/incoming
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "netstat -lnt | grep ':21' >/dev/null" ]
@@ -39,6 +43,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - bookstore-network
 
   bookstore-batch:
     image: bookstore-batch
@@ -48,12 +54,13 @@ services:
       dockerfile: Dockerfile  # uses the file to generate the compiled app of bookstore-batch
     ports:
       - "8080:8080"
+    volumes:
+      - ./ftp_data/downloaded:/app/downloaded
     depends_on:
       postgres:
         condition: service_healthy
       ftp-server:
         condition: service_healthy
-
     environment:
       # Inject these into your application.properties / application.yml
       # Postgres
@@ -73,6 +80,14 @@ services:
           path: src
         - action: rebuild
           path: build.gradle
+    profiles:
+      - global # Only deploys if this profile is turned on
+    networks:
+      - bookstore-network
 
 volumes:
   postgres-data:
+
+networks:
+  bookstore-network:
+    driver: bridge
