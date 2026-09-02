@@ -5,6 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_PASSWORD: bookstore_pwd
+      POSTGRES_USER: postgres
       POSTGRES_DB: bookstore
     ports:
       - "5432:5432"
