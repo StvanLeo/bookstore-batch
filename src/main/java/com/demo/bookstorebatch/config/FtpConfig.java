@@ -1,29 +1,32 @@
-package com.demo.bookstorebatch.ftp;
+package com.demo.bookstorebatch.config;
 
-import com.demo.bookstorebatch.service.BatchLauncher;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.net.ftp.FTPClient;
-import org.springframework.batch.core.job.Job;
-import org.springframework.batch.core.job.parameters.JobParameters;
-import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobOperator;
+import org.apache.commons.net.ftp.FTPFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.Pollers;
+import org.springframework.integration.file.remote.session.CachingSessionFactory;
+import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.ftp.dsl.Ftp;
 import org.springframework.integration.ftp.session.DefaultFtpSessionFactory;
 
 import java.io.File;
 
 @Configuration
+@EnableIntegration
 @RequiredArgsConstructor
 public class FtpConfig {
-    private final BatchLauncher batchLauncher;
+    private final FtpBatchJobLauncher batchLauncher;
+    private static final Logger log = LoggerFactory.getLogger(FtpConfig.class);
 
     @Bean
-    public DefaultFtpSessionFactory ftpSessionFactory(
+    public SessionFactory<FTPFile> ftpSessionFactory(
             @Value("${ftp.host}") String host,
             @Value("${ftp.port}") int port,
             @Value("${ftp.username}") String username,
@@ -41,54 +44,42 @@ public class FtpConfig {
         // Binary transfer
         factory.setFileType(FTPClient.BINARY_FILE_TYPE);
 
-        return factory;
+        log.info("FTP server: {}:{}", host, port);
+
+        return new CachingSessionFactory<>(factory);
     }
 
     @Bean
     public IntegrationFlow ftpInboundFlow(
-            DefaultFtpSessionFactory ftpSessionFactory,
+            SessionFactory<FTPFile> ftpSessionFactory,
             @Value("${ftp.remote-directory}") String remoteDirectory,
-            @Value("${batch.local-directory}") String localDirectory
+            @Value("${ftp.local-directory}") String localDirectory,
+            @Value("${ftp.poll-interval}") long pollInterval
     ) {
+        log.info("=== Creating FTP Inbound Flow ===");
+        log.info("Remote Directory: {}", remoteDirectory);
+        log.info("Local Directory: {}", localDirectory);
+
         return IntegrationFlow
                 .from(
                         Ftp.inboundAdapter(ftpSessionFactory)
                                 .preserveTimestamp(true)
                                 .remoteDirectory(remoteDirectory)
                                 .localDirectory(new File(localDirectory))
-                                .deleteRemoteFiles(false)
+                                .deleteRemoteFiles(true)
                                 .autoCreateLocalDirectory(true)
-                                .temporaryFileSuffix(".writing"),
-                        e -> e.poller(
-                                Pollers.fixedDelay(5000)
+                                .patternFilter("*.csv"),
+                        endpoint -> endpoint.poller(
+                                Pollers.fixedDelay(pollInterval)
                         )
                 )
                 .handle(File.class, (file, headers) -> {
+                    log.info(file.getAbsolutePath());
+                    log.info(headers.toString());
                     batchLauncher.launch(file);
 
                     return null;
                 })
                 .get();
-    }
-
-    private String extractEntity(File file) {
-
-        String filename = file.getName();
-
-        if (filename.equalsIgnoreCase("pub.csv")) {
-            return "publisher";
-        }
-
-        if (filename.equalsIgnoreCase("authors.csv")) {
-            return "author";
-        }
-
-        if (filename.equalsIgnoreCase("books.csv")) {
-            return "book";
-        }
-
-        throw new IllegalArgumentException(
-                "Unknown CSV file: " + filename
-        );
     }
 }
