@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Transient;
 import lombok.Data;
 
 @Entity
@@ -20,4 +21,11 @@ public class Author {
     private String biography;
     @ManyToOne(fetch = FetchType.LAZY)
     private Publisher publisher;
+
+    /**
+     * CSV-only value. The processor resolves it to {@link #publisher} before
+     * the entity is written, so it is not part of the authors table.
+     */
+    @Transient
+    private String publisherName;
 }

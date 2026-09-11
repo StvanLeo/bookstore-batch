@@ -16,4 +16,11 @@ public class Book {
     private String isbn;
     @ManyToMany(fetch = FetchType.LAZY)
     private List<Author> authors;
+
+    /**
+     * CSV-only, semicolon-separated author Names (for example: "Torra;Hennessy;Scott").
+     * The processor resolves the Names to {@link #authors} before persistence.
+     */
+    @Transient
+    private String authorNames;
 }
