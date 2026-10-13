@@ -1,4 +1,7 @@
 package com.demo.bookstorebatch.exception;
 
-public class BookStoreBatchException {
+public abstract class BookStoreBatchException extends RuntimeException {
+    public BookStoreBatchException(String message) {
+        super(message);
+    }
 }
